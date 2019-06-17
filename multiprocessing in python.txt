@@ -1,0 +1,62 @@
+######################## multiprocessing module in python ###################################
+
+
+import os
+import numpy as np 
+import datetime as dt
+import pandas as pd
+import time
+
+
+def tmt(lag,file_name,z,zt):
+    top_N = 6
+    
+    ref1=1-z
+    ref2=1-zt
+    
+    std=np.divide(np.dot(zt.T,z),(z.shape[0]-np.dot(ref2.T,ref1)))
+    ind=(-std).argsort(axis=0)[:top_N,:].T
+    
+    dim=[std.T[:,ind][x,x].tolist() for x in range(z.shape[1])]
+    
+    np.save("E:\\Test_run_correlation\\"+"lag_"+str(lag)+"_"+str(file_name)+".npy",np.array([dim,ind]))
+
+    
+def function_y():
+    print ("done")
+
+
+
+##############################################################
+
+import threading
+import multiprocessing
+no_of_cores = multiprocessing.cpu_count()-2
+
+max_lags = 7
+chunk_size = 150
+
+for i in range(1,max_lags+1):
+    print('Executing for lag :',i)
+    Base_Data=DF1.tail(-i)
+    shifted_data=DF1.head(-i)
+    zt=shifted_data.values
+    
+    total_list=[[m,m+chunk_size] for m in range(0,Base_Data.shape[1],chunk_size)]
+    
+    for j in range(1,int(np.ceil(len(total_list)/no_of_cores))+1):
+        
+        old=dt.datetime.now()
+        local_list=(total_list[(j-1)*no_of_cores:j*no_of_cores])
+
+        threads=[]
+        for k in local_list:
+            z=Base_Data.values[:,k[0]:k[1]]
+            t= threading.Thread(target=tmt,args=(i,k[0],z,zt))   
+            threads.append(t)
+            t.start()
+        for t in threads:
+            t.join()
+        
+        print((dt.datetime.now()-old)*((int(np.ceil(len(total_list)/no_of_cores))-j)+(7-i)*(int(np.ceil(len(total_list)/no_of_cores)))))
+
